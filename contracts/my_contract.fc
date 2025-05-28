@@ -1,0 +1,106 @@
+#include "imports/stdlib.fc";
+
+const op::edit_message = "op::edit_message"c; ;; create an opcode from string using the "c" prefix, this results in 6e1d23c8 opcode in this case
+const op::delete_message = "op::delete_message"c; ;; 78efd3e0
+const op::change_access = "op::change_access"c; ;; 708be4d1
+
+;; storage variables
+
+;; id is required to be able to create different instances of counters
+;; since addresses in TON depend on the initial state of the contract
+global slice ctx_owner;
+global slice ctx_message;
+global slice ctx_recent_sender;
+global int ctx_access;
+
+;; load_data populates storage variables using stored data
+(slice, int, slice, slice) load_data() impure {
+    var ds = get_data().begin_parse();
+    slice ctx_owner = ds~load_msg_addr();
+    int ctx_access = ds~load_uint(32);
+    slice ctx_recent_sender = ds~load_msg_addr();
+    slice ctx_message = ds~load_slice(); 
+    ds.end_parse();
+    
+    return (ctx_owner, ctx_access, ctx_recent_sender, ctx_message);
+}
+
+;; save_data stores storage variables as a cell into persistent storage
+() save_data(slice ctx_owner, int ctx_access, slice ctx_recent_sender, slice ctx_message) impure {
+    set_data(
+        begin_cell()
+            .store_slice(ctx_owner)
+            .store_uint(ctx_access)
+            .store_slice(ctx_recent_sender)
+            .store_slice(ctx_message)
+            .end_cell()
+    );
+    return ();
+}
+
+() edit_message(slice new_message, slice sender) impure inline {
+    var (ctx_owner, ctx_access, _) = load_data();
+    save_data(ctx_owner, ctx_access, sender, new_message);
+}
+
+() delete_message() impure inline {
+    var (ctx_owner, ctx_access, _, _) = load_data();
+    set_data(
+        begin_cell()
+        .store_slice(ctx_owner)
+        .store_uint(ctx_access)
+        .store_slice(begin_cell().end_cell().begin_parse())
+        .store_slice(begin_cell().end_cell().begin_parse())
+    );
+    return ();
+}
+
+() change_access(int new_access) {
+    var (ctx_owner, _, ctx_recent_sender, ctx_message) = load_data();
+    save_data(ctx_owner, new_access, ctx_recent_sender, ctx_message);
+}
+
+;; recv_internal is the main function of the contract and is called when it receives a message from other contracts
+() recv_internal(int msg_value, cell in_msg_full, slice in_msg_body) impure {
+    if (in_msg_body.slice_empty?()) { ;; ignore all empty messages
+        return ();
+    }
+
+    slice cs = in_msg_full.begin_parse();
+    int flags = cs~load_uint(4);
+    if (flags & 1) { ;; ignore all bounced messages
+        return ();
+    }
+
+    slice sender = cs~load_msg_addr();
+    var (ctx_owner, ctx_access, ctx_recent_sender, ctx_message) = load_data();
+
+    int op = in_msg_body~load_uint(32); 
+    int query_id = in_msg_body~load_uint(64); ;; Принято принимать query_id
+
+    if (op::edit_message) {
+        slice new_message = in_msg_body~load_slice();
+        edit_message(new_message, sender);
+    }
+
+    if (op::delete_message) {
+        throw_unless(201, equal_slice_bits(sender, ctx_recent_sender));
+        delete_message();
+    }
+
+    if (op::change_access) {
+        throw_unless(200, equal_slice_bits(sender, ctx_owner));
+        int new_access = in_msg_body~load_uint(32);
+        change_access(new_access);
+    }
+
+    throw(100); ;; Если нужного op нет
+}
+
+
+(slice, int, slice, slice) get_contract_data() method_id {
+    var (ctx_owner, ctx_access, ctx_recent_sender, ctx_message) = load_data();
+    return (ctx_owner, ctx_access, ctx_recent_sender, ctx_message);
+}
+
+
