@@ -3,6 +3,7 @@
 const op::edit_message = "op::edit_message"c; ;; create an opcode from string using the "c" prefix, this results in 6e1d23c8 opcode in this case
 const op::delete_message = "op::delete_message"c; ;; 78efd3e0
 const op::change_access = "op::change_access"c; ;; 708be4d1
+const op::transfer_ownership = "op::transfer_ownership"c; ;; 295e75a9
 
 ;; storage variables
 
@@ -12,27 +13,30 @@ global slice ctx_owner;
 global slice ctx_message;
 global slice ctx_recent_sender;
 global int ctx_access;
+global int message_time;
 
 ;; load_data populates storage variables using stored data
-(slice, int, slice, slice) load_data() impure {
+(slice, int, slice, slice) load_data() inline {
     var ds = get_data().begin_parse();
     slice ctx_owner = ds~load_msg_addr();
     int ctx_access = ds~load_uint(32);
     slice ctx_recent_sender = ds~load_msg_addr();
     slice ctx_message = ds~load_slice(); 
+    int message_time = ds~load_uint(32);
     ds.end_parse();
-    
-    return (ctx_owner, ctx_access, ctx_recent_sender, ctx_message);
+
+    return (ctx_owner, ctx_access, ctx_recent_sender, ctx_message, message_time);
 }
 
 ;; save_data stores storage variables as a cell into persistent storage
-() save_data(slice ctx_owner, int ctx_access, slice ctx_recent_sender, slice ctx_message) impure {
+() save_data(slice ctx_owner, int ctx_access, slice ctx_recent_sender, slice ctx_message, int message_time) impure inline {
     set_data(
         begin_cell()
             .store_slice(ctx_owner)
-            .store_uint(ctx_access)
+            .store_uint(ctx_access, 32)
             .store_slice(ctx_recent_sender)
             .store_slice(ctx_message)
+            .store_uint(message_time, 32)
             .end_cell()
     );
     return ();
@@ -40,7 +44,7 @@ global int ctx_access;
 
 () edit_message(slice new_message, slice sender) impure inline {
     var (ctx_owner, ctx_access, _) = load_data();
-    save_data(ctx_owner, ctx_access, sender, new_message);
+    save_data(ctx_owner, ctx_access, sender, new_message, now());
 }
 
 () delete_message() impure inline {
@@ -48,16 +52,22 @@ global int ctx_access;
     set_data(
         begin_cell()
         .store_slice(ctx_owner)
-        .store_uint(ctx_access)
+        .store_uint(ctx_access, 32)
         .store_slice(begin_cell().end_cell().begin_parse())
         .store_slice(begin_cell().end_cell().begin_parse())
+        .store_uint(0, 32)
     );
     return ();
 }
 
-() change_access(int new_access) {
-    var (ctx_owner, _, ctx_recent_sender, ctx_message) = load_data();
-    save_data(ctx_owner, new_access, ctx_recent_sender, ctx_message);
+() change_access(int new_access) impure inline {
+    var (ctx_owner, _, ctx_recent_sender, ctx_message, message_time) = load_data();
+    save_data(ctx_owner, new_access, ctx_recent_sender, ctx_message, message_time);
+}
+
+() transfer_ownership(slice transfer_to) impure inline {
+    var (_, ctx_access, ctx_recent_sender, ctx_message, message_time) = load_data();
+    save_data(transfer_to, ctx_access, ctx_recent_sender, ctx_message, message_time);
 }
 
 ;; recv_internal is the main function of the contract and is called when it receives a message from other contracts
@@ -78,20 +88,26 @@ global int ctx_access;
     int op = in_msg_body~load_uint(32); 
     int query_id = in_msg_body~load_uint(64); ;; Принято принимать query_id
 
-    if (op::edit_message) {
+    if (op = op::edit_message) {
         slice new_message = in_msg_body~load_slice();
         edit_message(new_message, sender);
     }
 
-    if (op::delete_message) {
-        throw_unless(201, equal_slice_bits(sender, ctx_recent_sender));
+    if (op = op::delete_message) {
+        throw_unless(200, equal_slice_bits(sender, ctx_recent_sender));
         delete_message();
     }
 
-    if (op::change_access) {
+    if (op = op::change_access) {
         throw_unless(200, equal_slice_bits(sender, ctx_owner));
         int new_access = in_msg_body~load_uint(32);
         change_access(new_access);
+    }
+
+    if (op = op::transfer_ownership) {
+        throw_unless(200, equal_slice_bits(sender, ctx_owner));
+        slice transfer_to = in_msg_body~load_msg_addr();
+        transfer_ownership(transfer_to);
     }
 
     throw(100); ;; Если нужного op нет
@@ -100,7 +116,12 @@ global int ctx_access;
 
 (slice, int, slice, slice) get_contract_data() method_id {
     var (ctx_owner, ctx_access, ctx_recent_sender, ctx_message) = load_data();
-    return (ctx_owner, ctx_access, ctx_recent_sender, ctx_message);
+    return (
+        ctx_owner, 
+        ctx_access, ;; 0 - запрещен, -1 - разрешен
+        ctx_recent_sender, 
+        ctx_message
+        );
 }
 
 
