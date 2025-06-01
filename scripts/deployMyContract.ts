@@ -1,4 +1,4 @@
-import { toNano } from '@ton/core';
+import { address, toNano } from '@ton/core';
 import { MyContract } from '../wrappers/MyContract';
 import { compile, NetworkProvider } from '@ton/blueprint';
 
@@ -6,8 +6,11 @@ export async function run(provider: NetworkProvider) {
     const myContract = provider.open(
         MyContract.createFromConfig(
             {
-                id: Math.floor(Math.random() * 10000),
-                counter: 0,
+                owner_address: address("YOUR_ADDRESS"),
+                access: -1,
+                recent_sender_address: address("YOUR_ADDRESS"),
+                message_text: "INITIAL MESSAGE".toString(),
+                message_time: Date.now(),
             },
             await compile('MyContract')
         )
@@ -17,5 +20,5 @@ export async function run(provider: NetworkProvider) {
 
     await provider.waitForDeploy(myContract.address);
 
-    console.log('ID', await myContract.getID());
+    console.log('Balance: ', await myContract.getBalance());
 }

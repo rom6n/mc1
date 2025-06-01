@@ -1,5 +1,5 @@
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
-import { Cell, toNano } from '@ton/core';
+import { address, Cell, toNano } from '@ton/core';
 import { MyContract } from '../wrappers/MyContract';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
@@ -21,8 +21,11 @@ describe('MyContract', () => {
         myContract = blockchain.openContract(
             MyContract.createFromConfig(
                 {
-                    id: 0,
-                    counter: 0,
+                    owner_address: address("YOUR_ADDRESS"),
+                    access: -1,
+                    recent_sender_address: address("YOUR_ADDRESS"),
+                    message_text: "INITIAL MESSAGE".toString(),
+                    message_time: Date.now(),
                 },
                 code
             )
@@ -38,6 +41,8 @@ describe('MyContract', () => {
             deploy: true,
             success: true,
         });
+
+        
     });
 
     it('should deploy', async () => {

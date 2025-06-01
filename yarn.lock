@@ -669,7 +669,7 @@
     "@ton-community/func-js-bin" "0.4.6-wasmfix.0"
     arg "^5.0.2"
 
-"@ton/blueprint@>=0.34.0":
+"@ton/blueprint@^0.34.0":
   version "0.34.0"
   resolved "https://registry.yarnpkg.com/@ton/blueprint/-/blueprint-0.34.0.tgz#105785f9167e7eb0b3e882cd31e7e614b00c4664"
   integrity sha512-7ovWAz5sFSE2QLG9M6FUX3lCRQRzEUI3Wo24abPh1N+cnLj2gZNQ4RH7lXQydjFt474DfoPTo+6GFbmQ99Nx6Q==

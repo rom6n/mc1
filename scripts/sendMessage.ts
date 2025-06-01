@@ -14,21 +14,22 @@ export async function run(provider: NetworkProvider, args: string[]) {
 
     const myContract = provider.open(MyContract.createFromAddress(address));
 
-    const counterBefore = await myContract.getCounter();
+    const MessageBefore = await myContract.getContractData();
 
-    await myContract.sendIncrease(provider.sender(), {
-        increaseBy: 1,
-        value: toNano('0.05'),
-    });
+    /*await myContract.edit_message(
+        provider.sender(),
+        toNano("0.05"),
+        "TEST MESSAGE".toString(),
+    );*/
 
-    ui.write('Waiting for counter to increase...');
+    ui.write('Waiting for message to edit...');
 
-    let counterAfter = await myContract.getCounter();
+    let MessageAfter = await myContract.getContractData();
     let attempt = 1;
-    while (counterAfter === counterBefore) {
+    while (MessageAfter === MessageBefore) {
         ui.setActionPrompt(`Attempt ${attempt}`);
         await sleep(2000);
-        counterAfter = await myContract.getCounter();
+        MessageAfter = await myContract.getContractData();
         attempt++;
     }
 
