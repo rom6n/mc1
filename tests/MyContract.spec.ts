@@ -52,8 +52,8 @@ describe('MyContract', () => {
 
     it('should edit message', async () => {
         let random = Math.floor(Math.random() * 100);
-        const sender = await blockchain.treasury("sender" + random)
-        const messageResult = await myContract.sendMessageEdit(sender.getSender(), toNano(0.05), `TEST MESSAGE ${random}`, random);
+        const sender = await blockchain.treasury("sender")
+        const messageResult = await myContract.sendMessageEdit(sender.getSender(), toNano(0.05), "TEST MESSAGE".toString(), random);
         expect(messageResult.transactions).toHaveTransaction({
             from: sender.address,
             to: myContract.address,

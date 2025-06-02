@@ -315,7 +315,7 @@ cell preload_ref(slice s) asm "PLDREF";
 ;; int preload_int(slice s, int len) asm "PLDIX";
 
 ;;; Preloads an unsigned [len]-bit integer from a slice [s].
-;; int preload_uint(slice s, int len) asm "PLDUX";
+;;int preload_uint(slice s, int len) asm "PLDUX";
 
 ;;; Loads the first `0 ≤ len ≤ 1023` bits from slice [s] into a separate `slice s''`.
 ;; (slice, slice) load_bits(slice s, int len) asm(s len -> 1 0) "LDSLICEX";

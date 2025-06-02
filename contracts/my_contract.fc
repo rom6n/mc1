@@ -18,12 +18,12 @@ const const::min_ton_for_storage = 10000000;
 ;;global int message_time;
 
 ;; load_data populates storage variables using stored data
-(slice, int, slice, slice, int) load_data() inline {
+(slice, int, slice, cell, int) load_data() inline {
     var ds = get_data().begin_parse();
     slice ctx_owner = ds~load_msg_addr();
     int ctx_access = ds~load_uint(32);
     slice ctx_recent_sender = ds~load_msg_addr();
-    slice ctx_message = ds~load; 
+    cell ctx_message = ds~load_ref(); 
     int message_time = ds~load_uint(64);
     ds.end_parse();
 
@@ -31,19 +31,19 @@ const const::min_ton_for_storage = 10000000;
 }
 
 ;; save_data stores storage variables as a cell into persistent storage
-() save_data(slice ctx_owner, int ctx_access, slice ctx_recent_sender, slice ctx_message, int message_time) impure inline {
+() save_data(slice ctx_owner, int ctx_access, slice ctx_recent_sender, cell ctx_message, int message_time) impure inline {
     set_data(
         begin_cell()
             .store_slice(ctx_owner)
             .store_uint(ctx_access, 32)
             .store_slice(ctx_recent_sender)
-            .store_slice(ctx_message)
+            .store_ref(ctx_message)
             .store_uint(message_time, 64)
             .end_cell()
     );
 }
 
-() edit_message(slice ctx_owner, int ctx_access, slice new_message, slice sender) impure inline {
+() edit_message(slice ctx_owner, int ctx_access, cell new_message, slice sender) impure inline {
     save_data(ctx_owner, ctx_access, sender, new_message, now());
 }
 
@@ -53,13 +53,13 @@ const const::min_ton_for_storage = 10000000;
         .store_slice(ctx_owner)
         .store_uint(ctx_access, 32)
         .store_slice(begin_cell().end_cell().begin_parse())
-        .store_slice(begin_cell().end_cell().begin_parse())
+        .store_ref(begin_cell().end_cell())
         .store_uint(message_time, 64)
         .end_cell()
     );
 }
 
-() change_access(slice ctx_owner, int new_access, slice ctx_recent_sender, slice ctx_message, int message_time) impure inline {
+() change_access(slice ctx_owner, int new_access, slice ctx_recent_sender, cell ctx_message, int message_time) impure inline {
     save_data(ctx_owner, new_access, ctx_recent_sender, ctx_message, message_time);
 }
 
@@ -75,23 +75,25 @@ const const::min_ton_for_storage = 10000000;
         return ();
     }
 
-    slice sender = cs~load_msg_addr();
+    slice sender = cs~load_msg_addr(); 
+
     var (ctx_owner, ctx_access, ctx_recent_sender, ctx_message, message_time) = load_data();
 
-    int op = in_msg_body~load_uint(32); 
-    int query_id = in_msg_body~load_uint(64); ;; Принято принимать query_id
+    int op = in_msg_body~load_uint(32); ;; опкод
+    int query_id = in_msg_body~load_uint(64); ;; Принято использовать и принимать query_id
 
-    if (op == op::edit_message) {
+
+    if (op == 10) {
         if (ctx_access == 0) {
             throw_unless(201, equal_slice_bits(sender, ctx_owner));
         }
 
-        slice new_message = in_msg_body~slice_bits();
+        cell new_message = in_msg_body~load_ref();
         edit_message(ctx_owner, ctx_access, new_message, sender);
         return ();
     }
 
-    if (op == op::delete_message) {
+    if (op == 11) {
         if (ctx_access == 0) {
             throw_unless(202, equal_slice_bits(sender, ctx_owner));
         }
@@ -103,14 +105,14 @@ const const::min_ton_for_storage = 10000000;
         return ();
     }
 
-    if (op == op::change_access) {
+    if (op == 12) {
         throw_unless(204, equal_slice_bits(sender, ctx_owner));
         int new_access = in_msg_body~load_uint(32);
         change_access(ctx_owner, new_access, ctx_recent_sender, ctx_message, message_time);
         return ();
     }
 
-    if (op == op::transfer_ownership) {
+    if (op == 13) {
         throw_unless(205, equal_slice_bits(sender, ctx_owner));
         slice transfer_to = in_msg_body~load_msg_addr();
         save_data(transfer_to, ctx_access, ctx_recent_sender, ctx_message, message_time);
@@ -143,7 +145,7 @@ const const::min_ton_for_storage = 10000000;
 }
 
 
-(slice, int, slice, slice, int) get_contract_data() method_id {
+(slice, int, slice, cell, int) get_contract_data() method_id {
     var (ctx_owner, ctx_access, ctx_recent_sender, ctx_message, message_time) = load_data();
     return (
         ctx_owner, 

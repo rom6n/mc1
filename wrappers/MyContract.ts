@@ -9,20 +9,21 @@ export type MyContractConfig = {
 };
 
 export function myContractConfigToCell(config: MyContractConfig): Cell {
+    const msg_text = beginCell().storeStringTail(config.message_text).endCell();
     return beginCell()
         .storeAddress(config.owner_address)
         .storeUint(config.access, 32)
         .storeAddress(config.recent_sender_address)
-        .storeStringTail(config.message_text)
+        .storeRef(msg_text)
         .storeUint(config.message_time, 64)
         .endCell();
 }
 
 export const Opcodes = {
-    edit_message: 0x6e1d23c8,
-    delete_message: 0x78efd3e0,
-    change_access: 0x708be4d1,
-    transfer_ownership: 0x295e75a9,
+    edit_message: 10,
+    delete_message: 11,
+    change_access: 12,
+    transfer_ownership: 13,
     deposit: 1,
     withdraw: 2,
 };
@@ -55,14 +56,17 @@ export class MyContract implements Contract {
         new_message: string,
         queryID?: number,
     ) {
+        const message_cell = beginCell().storeStringTail(new_message).endCell();
+        const msg_body = beginCell()
+            .storeUint(10, 32)
+            .storeUint(queryID ?? 0, 64)
+            .storeRef(message_cell)
+            .endCell();
+
         await provider.internal(via, {
             value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell()
-                .storeUint(Opcodes.edit_message, 32)
-                .storeUint(queryID ?? 0, 64)
-                .storeStringTail(new_message)
-                .endCell(),
+            body: msg_body
         });
     }
 
