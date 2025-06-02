@@ -21,9 +21,9 @@ describe('MyContract', () => {
         myContract = blockchain.openContract(
             MyContract.createFromConfig(
                 {
-                    owner_address: address("YOUR_ADDRESS"),
-                    access: -1,
-                    recent_sender_address: address("YOUR_ADDRESS"),
+                    owner_address: address("0QDU46qYz4rHAJhszrW9w6imF8p4Cw5dS1GpPTcJ9vqNSmnf"),
+                    access: 1,
+                    recent_sender_address: address("0QDU46qYz4rHAJhszrW9w6imF8p4Cw5dS1GpPTcJ9vqNSmnf"),
                     message_text: "INITIAL MESSAGE".toString(),
                     message_time: Date.now(),
                 },
@@ -47,40 +47,23 @@ describe('MyContract', () => {
 
     it('should deploy', async () => {
         // the check is done inside beforeEach
-        // blockchain and myContract are ready to use
+        // blockchain and myConract are ready to use
     });
 
-    it('should increase counter', async () => {
-        const increaseTimes = 3;
-        for (let i = 0; i < increaseTimes; i++) {
-            console.log(`increase ${i + 1}/${increaseTimes}`);
+    it('should edit message', async () => {
+        let random = Math.floor(Math.random() * 100);
+        const sender = await blockchain.treasury("sender" + random)
+        const messageResult = await myContract.sendMessageEdit(sender.getSender(), toNano(0.05), `TEST MESSAGE ${random}`, random);
+        expect(messageResult.transactions).toHaveTransaction({
+            from: sender.address,
+            to: myContract.address,
+            success: true,
+        })
 
-            const increaser = await blockchain.treasury('increaser' + i);
+        const {owner, message, message_time, recent_sender, access} = await myContract.getContractData();
+        let current_time = new Date(message_time);
+        console.log(`Текущее сообщение: ${message}\nВремя: ${current_time}`);
 
-            const counterBefore = await myContract.getCounter();
-
-            console.log('counter before increasing', counterBefore);
-
-            const increaseBy = Math.floor(Math.random() * 100);
-
-            console.log('increasing by', increaseBy);
-
-            const increaseResult = await myContract.sendIncrease(increaser.getSender(), {
-                increaseBy,
-                value: toNano('0.05'),
-            });
-
-            expect(increaseResult.transactions).toHaveTransaction({
-                from: increaser.address,
-                to: myContract.address,
-                success: true,
-            });
-
-            const counterAfter = await myContract.getCounter();
-
-            console.log('counter after increasing', counterAfter);
-
-            expect(counterAfter).toBe(counterBefore + increaseBy);
-        }
     });
+
 });

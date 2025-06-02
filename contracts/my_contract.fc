@@ -18,13 +18,13 @@ const const::min_ton_for_storage = 10000000;
 ;;global int message_time;
 
 ;; load_data populates storage variables using stored data
-(slice, int, slice, slice) load_data() inline {
+(slice, int, slice, slice, int) load_data() inline {
     var ds = get_data().begin_parse();
     slice ctx_owner = ds~load_msg_addr();
     int ctx_access = ds~load_uint(32);
     slice ctx_recent_sender = ds~load_msg_addr();
-    slice ctx_message = ds~load_slice(); 
-    int message_time = ds~load_uint(32);
+    slice ctx_message = ds~load; 
+    int message_time = ds~load_uint(64);
     ds.end_parse();
 
     return (ctx_owner, ctx_access, ctx_recent_sender, ctx_message, message_time);
@@ -38,7 +38,7 @@ const const::min_ton_for_storage = 10000000;
             .store_uint(ctx_access, 32)
             .store_slice(ctx_recent_sender)
             .store_slice(ctx_message)
-            .store_uint(message_time, 32)
+            .store_uint(message_time, 64)
             .end_cell()
     );
 }
@@ -54,7 +54,8 @@ const const::min_ton_for_storage = 10000000;
         .store_uint(ctx_access, 32)
         .store_slice(begin_cell().end_cell().begin_parse())
         .store_slice(begin_cell().end_cell().begin_parse())
-        .store_uint(message_time, 32)
+        .store_uint(message_time, 64)
+        .end_cell()
     );
 }
 
@@ -85,8 +86,8 @@ const const::min_ton_for_storage = 10000000;
             throw_unless(201, equal_slice_bits(sender, ctx_owner));
         }
 
-        slice new_message = in_msg_body~load_slice();
-        edit_message(ctx_owner, ctx_access, new_message, sender)
+        slice new_message = in_msg_body~slice_bits();
+        edit_message(ctx_owner, ctx_access, new_message, sender);
         return ();
     }
 
@@ -98,14 +99,14 @@ const const::min_ton_for_storage = 10000000;
         throw_unless(203, equal_slice_bits(sender, ctx_recent_sender) |
              equal_slice_bits(sender, ctx_owner));
 
-        delete_message(ctx_owner, ctx_access, message_time)
+        delete_message(ctx_owner, ctx_access, message_time);
         return ();
     }
 
     if (op == op::change_access) {
         throw_unless(204, equal_slice_bits(sender, ctx_owner));
         int new_access = in_msg_body~load_uint(32);
-        change_access(ctx_owner, new_access, ctx_recent_sender, ctx_message, message_time)
+        change_access(ctx_owner, new_access, ctx_recent_sender, ctx_message, message_time);
         return ();
     }
 
@@ -123,8 +124,8 @@ const const::min_ton_for_storage = 10000000;
     if (op == 2) {  ;; выводим TON из контракта 
         throw_unless(206, equal_slice_bits(sender, ctx_owner));
         int amount = in_msg_body~load_coins();
-        int balance = get_balance();
-        int balance -= amount;
+        var [balance, _] = get_balance();
+        int balance = balance - amount;
         throw_if(301, balance < const::min_ton_for_storage);
 
         var msg = begin_cell()
@@ -133,7 +134,7 @@ const const::min_ton_for_storage = 10000000;
             .store_coins(amount)
             .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1);
 
-        send_raw_message(msg.end_cell(), msg_mode);
+        send_raw_message(msg.end_cell(), 1);
 
         return();
     }
@@ -146,7 +147,7 @@ const const::min_ton_for_storage = 10000000;
     var (ctx_owner, ctx_access, ctx_recent_sender, ctx_message, message_time) = load_data();
     return (
         ctx_owner, 
-        ctx_access, ;; 0 - запрещен, -1 - разрешен
+        ctx_access, ;; 0 - запрещен, 1 - разрешен
         ctx_recent_sender, 
         ctx_message,
         message_time
@@ -154,7 +155,7 @@ const const::min_ton_for_storage = 10000000;
 }
 
 int balance() method_id {
-    int [balance, _] = get_balance();
+    var [balance, _] = get_balance();
     return balance;
 }
 

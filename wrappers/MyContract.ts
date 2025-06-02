@@ -14,7 +14,7 @@ export function myContractConfigToCell(config: MyContractConfig): Cell {
         .storeUint(config.access, 32)
         .storeAddress(config.recent_sender_address)
         .storeStringTail(config.message_text)
-        .storeUint(config.message_time, 32)
+        .storeUint(config.message_time, 64)
         .endCell();
 }
 
@@ -48,7 +48,7 @@ export class MyContract implements Contract {
         });
     }
 
-    async edit_message(
+    async sendMessageEdit(
         provider: ContractProvider,
         via: Sender,
         value: bigint,
@@ -66,7 +66,7 @@ export class MyContract implements Contract {
         });
     }
 
-    async delete_message(
+    async deleteMessage(
         provider: ContractProvider,
         via: Sender,
         value: bigint,
@@ -82,7 +82,7 @@ export class MyContract implements Contract {
         });
     }
 
-    async change_access(
+    async changeAccess(
         provider: ContractProvider,
         via: Sender,
         value: bigint,
@@ -100,7 +100,7 @@ export class MyContract implements Contract {
         });
     }
 
-    async transfer_ownership(
+    async transferOwnership(
         provider: ContractProvider,
         via: Sender,
         value: bigint,
@@ -118,7 +118,7 @@ export class MyContract implements Contract {
         });
     }
 
-    async send_deposit(
+    async sendDeposit(
         provider: ContractProvider,
         via: Sender,
         value: bigint,
@@ -134,7 +134,7 @@ export class MyContract implements Contract {
         });
     }
 
-    async send_withdraw(
+    async sendWithdraw(
         provider: ContractProvider,
         via: Sender,
         value: bigint,
@@ -154,13 +154,13 @@ export class MyContract implements Contract {
 
     async getContractData(provider: ContractProvider) {
         const {stack} = await provider.get('get_contract_data', []);
-        return (
-            stack.readAddress,
-            stack.readNumber,
-            stack.readAddress,
-            stack.readString,
-            stack.readNumber
-        )
+        return {
+            owner: stack.readAddress(),
+            access: stack.readNumber(),
+            recent_sender: stack.readAddress(),
+            message: stack.readString(),
+            message_time: stack.readNumber(),
+        }
     }
 
     async getBalance(provider: ContractProvider) {
