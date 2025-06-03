@@ -70,7 +70,7 @@ export class MyContract implements Contract {
         });
     }
 
-    async deleteMessage(
+    async sendDeleteMessage(
         provider: ContractProvider,
         via: Sender,
         value: bigint,
@@ -86,39 +86,33 @@ export class MyContract implements Contract {
         });
     }
 
-    async changeAccess(
+    async sendChangeAccess(
         provider: ContractProvider,
         via: Sender,
         value: bigint,
         new_access: number,
         queryID?: number,
     ) {
+        const msg_body = beginCell().storeUint(Opcodes.change_access, 32).storeUint(queryID ?? 0, 64).storeUint(new_access, 32).endCell();
         await provider.internal(via, {
             value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell()
-                .storeUint(Opcodes.edit_message, 32)
-                .storeUint(queryID ?? 0, 64)
-                .storeUint(new_access, 32) // 0 - запрещено всем кроме владельца, -1 - разрешено
-                .endCell(),
+            body: msg_body
         });
     }
 
-    async transferOwnership(
+    async sendTransferOwnership(
         provider: ContractProvider,
         via: Sender,
         value: bigint,
         transfer_to: Address,
         queryID?: number,
     ) {
+        const msg_body = beginCell().storeUint(Opcodes.transfer_ownership, 32).storeUint(queryID ?? 0, 64).storeAddress(transfer_to).endCell();
         await provider.internal(via, {
             value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell()
-                .storeUint(Opcodes.edit_message, 32)
-                .storeUint(queryID ?? 0, 64)
-                .storeAddress(transfer_to)
-                .endCell(),
+            body: msg_body
         });
     }
 
@@ -128,13 +122,11 @@ export class MyContract implements Contract {
         value: bigint,
         queryID?: number,
     ) {
+        const msg_body = beginCell().storeUint(Opcodes.deposit, 32).storeUint(queryID ?? 0, 32).endCell();
         await provider.internal(via, {
             value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell()
-                .storeUint(Opcodes.edit_message, 32)
-                .storeUint(queryID ?? 0, 64)
-                .endCell(),
+            body: msg_body
         });
     }
 
@@ -142,17 +134,14 @@ export class MyContract implements Contract {
         provider: ContractProvider,
         via: Sender,
         value: bigint,
-        amount: number,
+        amount: bigint,
         queryID?: number,
     ) {
+        const msg_body = beginCell().storeUint(Opcodes.withdraw, 32).storeUint(queryID ?? 0, 64).storeCoins(amount).endCell();
         await provider.internal(via, {
             value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell()
-                .storeUint(Opcodes.edit_message, 32)
-                .storeUint(queryID ?? 0, 64)
-                .storeCoins(toNano(amount))
-                .endCell(),
+            body: msg_body
         });
     }
 
