@@ -6,9 +6,9 @@ export async function run(provider: NetworkProvider) {
     const myContract = provider.open(
         MyContract.createFromConfig(
             {
-                owner_address: address("YOUR_ADDRESS"),
-                access: -1,
-                recent_sender_address: address("YOUR_ADDRESS"),
+                owner_address: address("0QDU46qYz4rHAJhszrW9w6imF8p4Cw5dS1GpPTcJ9vqNSmnf"),
+                access: 1,
+                recent_sender_address: address("0QDU46qYz4rHAJhszrW9w6imF8p4Cw5dS1GpPTcJ9vqNSmnf"),
                 message_text: "INITIAL MESSAGE".toString(),
                 message_time: Date.now(),
             },

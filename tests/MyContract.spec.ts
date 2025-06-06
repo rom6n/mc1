@@ -55,8 +55,9 @@ describe('MyContract', () => {
     it('should edit message', async () => {
         let random = Math.floor(Math.random() * 100);
         const sender = await blockchain.treasury("sender")
-        const messageResult = await myContract.sendMessageEdit(sender.getSender(), toNano(0.05), "TEST MESSAGE".toString(), random);
-        expect(messageResult.transactions).toHaveTransaction({
+        const messafe_text = "TEST MESSAAGE 4328479999999999999999999999999999999999999999453258397245876666666666666666666663807592735987897258732840783467893672348765894972349503464634537";
+        const messageResult = await myContract.sendMessageEdit(sender.getSender(), toNano(0.05), messafe_text.toString(), random);
+        expect(messageResult.transactions).toHaveTransaction({ 
             from: sender.address,
             to: myContract.address,
             success: true,
@@ -137,7 +138,7 @@ describe('MyContract', () => {
         expect(balance_before).toBeGreaterThan(balance_after);
     })
 
-    it("should withdraw coins due a lot", async () => {
+    it("should NOT withdraw coins due a lot", async () => {
         const random = Math.floor(Math.random() * 100);
         const withdrawResult = await myContract.sendWithdraw(owner.getSender(), toNano(0.05), toNano(0.1), random);
         expect(withdrawResult.transactions).toHaveTransaction({
